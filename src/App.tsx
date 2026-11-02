@@ -1,35 +1,30 @@
 import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { AppShell, Container, Title } from '@mantine/core';
-import { fetchProducts, type Product } from './api/products';
+import { fetchProductsThunk } from './store/productsSlice';
 import { useCart } from './hooks/useCart';
 import { AppHeader } from './components/AppHeader';
 import { ProductList } from './components/ProductList';
 import { CartDrawer } from './components/CartDrawer';
+import type { RootState, AppDispatch } from './store';
 
 export default function App() {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const dispatch = useDispatch<AppDispatch>();
+
+    const { items: products, loading, error } = useSelector((state: RootState) => state.products);
     const [isCartOpen, setIsCartOpen] = useState(false);
 
-    const { cartDetails, totalItems, totalPrice, addToCart, removeFromCart, updateCartQuantity } = useCart(products);
+    const { cartDetails, totalItems, totalPrice, addToCart, removeFromCart, updateCartQuantity } = useCart();
 
     useEffect(() => {
-        loadProducts();
-    }, []);
-
-    async function loadProducts() {
-        try {
-            setLoading(true);
-            setError(null);
-            const data = await fetchProducts();
-            setProducts(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
-        } finally {
-            setLoading(false);
+        if (products.length === 0 && !loading) {
+            dispatch(fetchProductsThunk());
         }
-    }
+    }, [dispatch, products.length, loading]);
+
+    const handleRetry = () => {
+        dispatch(fetchProductsThunk());
+    };
 
     return (
         <AppShell header={{ height: 60 }} padding={0}>
@@ -51,7 +46,7 @@ export default function App() {
                         products={products}
                         loading={loading}
                         error={error}
-                        onRetry={loadProducts}
+                        onRetry={handleRetry}
                         onAddToCart={addToCart}
                     />
                 </Container>

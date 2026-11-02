@@ -1,53 +1,34 @@
-import { useState, useMemo } from 'react';
+import { useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch } from '../store';
+import {
+    addToCart as addToCartAction,
+    removeFromCart as removeFromCartAction,
+    updateCartQuantity as updateCartQuantityAction
+} from '../store/cartSlice';
+import { selectCartDetails, selectTotalItems, selectTotalPrice } from '../store/cartSlice';
 import type { Product } from '../api/products';
 
-export function useCart(products: Product[]) {
-    const [cart, setCart] = useState<Record<string, number>>({});
+export function useCart() {
+    const dispatch = useDispatch<AppDispatch>();
 
-    const addToCart = (product: Product, quantity: number) => {
-        if (quantity <= 0) return;
-        const key = String(product.id);
-        setCart((prev) => ({
-            ...prev,
-            [key]: (prev[key] || 0) + quantity,
-        }));
-    };
+    const cartDetails = useSelector(selectCartDetails);
+    const totalItems = useSelector(selectTotalItems);
+    const totalPrice = useSelector(selectTotalPrice);
 
-    const removeFromCart = (productId: string | number) => {
-        const key = String(productId);
-        setCart((prev) => {
-            const newCart = { ...prev };
-            delete newCart[key];
-            return newCart;
-        });
-    };
+    const addToCart = useCallback((product: Product, quantity: number) => {
+        dispatch(addToCartAction({ productId: String(product.id), quantity }));
+    }, [dispatch]);
 
-    const updateCartQuantity = (productId: string | number, quantity: number) => {
-        const key = String(productId);
-        if (quantity <= 0) {
-            removeFromCart(productId);
-        } else {
-            setCart((prev) => ({ ...prev, [key]: quantity }));
-        }
-    };
+    const removeFromCart = useCallback((productId: string | number) => {
+        dispatch(removeFromCartAction(String(productId)));
+    }, [dispatch]);
 
-    const cartDetails = useMemo(() => {
-        return Object.entries(cart)
-            .map(([id, qty]) => {
-                const product = products.find((p) => String(p.id) === id);
-                return product ? { product, qty } : null;
-            })
-            .filter(Boolean) as { product: Product; qty: number }[];
-    }, [cart, products]);
-
-    const totalItems = useMemo(() => cartDetails.reduce((sum, item) => sum + item.qty, 0), [cartDetails]);
-
-    const totalPrice = useMemo(() =>
-            cartDetails.reduce((sum, item) => sum + item.product.price * item.qty, 0),
-        [cartDetails]);
+    const updateCartQuantity = useCallback((productId: string | number, quantity: number) => {
+        dispatch(updateCartQuantityAction({ productId: String(productId), quantity }));
+    }, [dispatch]);
 
     return {
-        cart,
         cartDetails,
         totalItems,
         totalPrice,
